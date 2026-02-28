@@ -1,0 +1,28 @@
+services:
+  backend:
+    build: ./backend
+    container_name: conut-backend
+    working_dir: /app
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/data:/app/data
+      - ./backend/tests:/app/tests
+    ports:
+      - "8000:8000"
+    environment:
+      CONUT_ENVIRONMENT: dev
+
+  frontend:
+    build: ./frontend
+    container_name: conut-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      OPENAPI_URL: http://backend:8000/openapi.json
+    depends_on:
+      - backend
