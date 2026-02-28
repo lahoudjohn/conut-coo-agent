@@ -17,11 +17,24 @@ def test_tool_schema() -> None:
     assert response.status_code == 200
     body = response.json()
     assert "tools" in body
+    assert "primary_objective_tools" in body
     tool_names = {tool["name"] for tool in body["tools"]}
     assert len(body["tools"]) >= 7
+    assert len(body["primary_objective_tools"]) == 5
     assert "estimate_staffing" in tool_names
     assert "understaffed_branches" in tool_names
     assert "average_shift_length" in tool_names
+
+
+def test_openclaw_manifest() -> None:
+    response = client.get("/tools/openclaw_manifest")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["plugin_id"] == "conut-coo-agent"
+    assert body["tool_count"] == 5
+    openclaw_names = {tool["openclaw_name"] for tool in body["tools"]}
+    assert "conut_combo_optimization" in openclaw_names
+    assert "conut_shift_staffing" in openclaw_names
 
 
 def test_forecast_endpoint_smoke() -> None:

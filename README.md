@@ -99,6 +99,7 @@ make generate-client
 ### OpenClaw Tool Endpoints
 
 - `GET /tools/schema`
+- `GET /tools/openclaw_manifest`
 - `POST /tools/recommend_combos`
 - `POST /tools/forecast_demand`
 - `POST /tools/estimate_staffing`
@@ -126,6 +127,10 @@ curl -X POST http://localhost:8000/tools/forecast_demand \
 
 Use `GET /tools/schema` to register the tools dynamically.
 
+Use `GET /tools/openclaw_manifest` when you want a strict 5-tool handoff aligned to the
+hackathon objectives. That manifest excludes helper endpoints such as
+`understaffed_branches` and `average_shift_length`.
+
 Recommended OpenClaw flow:
 
 1. Fetch `/tools/schema`
@@ -134,6 +139,18 @@ Recommended OpenClaw flow:
 4. Use `result` for direct answers and `key_evidence_metrics` / `assumptions` for justification
 
 The payloads are intentionally simple, stable, and JSON-first.
+
+This repo also includes a local OpenClaw plugin starter:
+
+- `openclaw/conut-coo-agent/`
+
+Install it by linking the local plugin entrypoint:
+
+```bash
+openclaw plugins install -l ./openclaw/conut-coo-agent/conut-coo-agent.ts
+```
+
+See `docs/openclaw.md` for the full setup flow.
 
 ## Data and Modeling Notes
 
