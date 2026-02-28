@@ -4,9 +4,51 @@
 
 :root {
   color-scheme: light;
+  --coonut-ink: #05070c;
+  --coonut-burgundy: #8b1f2d;
+  --coonut-gold: #d7bb7d;
+  --coonut-cream: #fff8eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  min-width: 320px;
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #05070c 0%, #0b121a 42%, #101927 100%);
+  color: var(--coonut-cream);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(215, 187, 125, 0.34);
+  color: #2f0b12;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(215, 187, 125, 0.28);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(215, 187, 125, 0.42);
 }
