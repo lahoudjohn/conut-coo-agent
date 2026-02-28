@@ -14,7 +14,7 @@ const TOOL_ACTIVITY_STORAGE_KEY = "conut-openclaw-tool-activity";
 
 const PROMPTS = [
   "What are the top 5 product combos to promote?",
-  "Forecast demand for Conut Jnah for the next 7 days.",
+  "Forecast demand for Conut Jnah for the next month.",
   "Is North District a good candidate for a new branch in Beirut?",
   "How many staff do we need at Main Street Coffee for the evening shift in 2025-12?",
   "How can we increase coffee and milkshake sales across all branches?",
