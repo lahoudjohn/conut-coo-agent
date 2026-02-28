@@ -7,6 +7,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[1]
 INPUT_PATH = BASE_DIR / "raw" / "REP_S_00502.csv"
 OUTPUT_PATH = BASE_DIR / "processed" / "REP_S_00502_cleaned.csv"
+UPDATED_OUTPUT_PATH = BASE_DIR / "processed" / "REP_S_00502_cleaned_updated.csv"
 
 
 def normalize_cell(value: str) -> str:
@@ -87,6 +88,7 @@ def clean_sales_by_customer_report(input_path: Path = INPUT_PATH, output_path: P
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     cleaned_rows: list[dict[str, object]] = []
+    order_sequence = 0
     current_branch = ""
     current_customer = ""
     current_customer_rows: list[dict[str, object]] = []
@@ -125,11 +127,15 @@ def clean_sales_by_customer_report(input_path: Path = INPUT_PATH, output_path: P
         if is_customer_total_row(row):
             customer_total_qty = parse_numeric(second)
             customer_total_amount = parse_numeric(fourth)
-            if customer_total_amount > 0:
-                for pending_row in current_customer_rows:
-                    pending_row["customer_total_qty"] = customer_total_qty
-                    pending_row["customer_total_amount"] = customer_total_amount
-                cleaned_rows.extend(current_customer_rows)
+            order_sequence += 1
+            order_id = f"ORD-{order_sequence:06d}"
+            for line_index, pending_row in enumerate(current_customer_rows, start=1):
+                pending_row["order_id"] = order_id
+                pending_row["order_sequence"] = order_sequence
+                pending_row["line_index_in_order"] = line_index
+                pending_row["customer_total_qty"] = customer_total_qty
+                pending_row["customer_total_amount"] = customer_total_amount
+            cleaned_rows.extend(current_customer_rows)
             current_customer_rows = []
             current_customer = ""
             continue
@@ -146,6 +152,9 @@ def clean_sales_by_customer_report(input_path: Path = INPUT_PATH, output_path: P
                     "line_amount": line_amount,
                     "customer_total_qty": "",
                     "customer_total_amount": "",
+                    "order_id": "",
+                    "order_sequence": "",
+                    "line_index_in_order": "",
                     "report_generated_date": report_generated_date,
                     "from_date": from_date,
                     "to_date": to_date,
@@ -168,6 +177,9 @@ def clean_sales_by_customer_report(input_path: Path = INPUT_PATH, output_path: P
         "line_amount",
         "customer_total_qty",
         "customer_total_amount",
+        "order_id",
+        "order_sequence",
+        "line_index_in_order",
         "report_generated_date",
         "from_date",
         "to_date",
@@ -183,6 +195,31 @@ def clean_sales_by_customer_report(input_path: Path = INPUT_PATH, output_path: P
     return len(cleaned_rows), output_path
 
 
+def write_positive_order_subset(
+    source_path: Path = OUTPUT_PATH,
+    output_path: Path = UPDATED_OUTPUT_PATH,
+) -> tuple[int, Path]:
+    with source_path.open("r", newline="", encoding="utf-8") as csv_file:
+        reader = csv.DictReader(csv_file)
+        rows = list(reader)
+        fieldnames = reader.fieldnames or []
+
+    positive_rows = [
+        row
+        for row in rows
+        if parse_numeric(str(row.get("customer_total_amount", "0"))) > 0
+    ]
+
+    with output_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(positive_rows)
+
+    return len(positive_rows), output_path
+
+
 if __name__ == "__main__":
     row_count, written_path = clean_sales_by_customer_report()
+    updated_row_count, updated_path = write_positive_order_subset()
     print(f"Cleaned {row_count} sales detail rows -> {written_path}")
+    print(f"Wrote {updated_row_count} positive-order rows -> {updated_path}")

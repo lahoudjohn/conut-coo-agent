@@ -1,5 +1,10 @@
 from fastapi import APIRouter
 
+from app.objectives.objective1_combo.service import recommend_combos
+from app.objectives.objective2_forecast.service import forecast_branch_demand
+from app.objectives.objective3_expansion.service import score_expansion_feasibility
+from app.objectives.objective4_staffing.service import estimate_shift_staffing
+from app.objectives.objective5_growth.service import build_growth_strategy
 from app.schemas.tools import (
     ComboRequest,
     ExpansionRequest,
@@ -8,11 +13,6 @@ from app.schemas.tools import (
     StaffingRequest,
     ToolResponse,
 )
-from app.services.tools.combo import recommend_combos
-from app.services.tools.expansion import score_expansion_feasibility
-from app.services.tools.forecast import forecast_branch_demand
-from app.services.tools.staffing import estimate_shift_staffing
-from app.services.tools.strategy import build_growth_strategy
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 

@@ -31,6 +31,7 @@ High-level flow:
 ## Project Structure
 
 - `backend/`: FastAPI app, ingestion pipeline, feature logic, tests
+- `backend/app/objectives/`: one folder per hackathon objective (combo, forecast, expansion, staffing, growth)
 - `frontend/`: Vite + React + Tailwind demo UI
 - `docs/`: architecture and executive brief template
 - `demo/`: demo capture checklist

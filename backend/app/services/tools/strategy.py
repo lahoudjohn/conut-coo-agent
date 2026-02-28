@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from app.schemas.tools import ComboRequest, GrowthStrategyRequest, ToolResponse
+from app.objectives.objective1_combo.service import recommend_combos
 from app.services.features import category_keyword_share
-from app.services.tools.combo import recommend_combos
 
 
 def build_growth_strategy(payload: GrowthStrategyRequest) -> ToolResponse:
@@ -31,7 +31,16 @@ def build_growth_strategy(payload: GrowthStrategyRequest) -> ToolResponse:
     category_df["revenue_share"] = category_df["revenue_proxy"] / total_revenue
     weakest = category_df.sort_values("revenue_share").head(1).iloc[0]
 
-    combo_response = recommend_combos(ComboRequest(branch=payload.branch, top_n=3, min_support=0.01))
+    combo_response = recommend_combos(
+        ComboRequest(
+            mode="top_combos",
+            branch=payload.branch,
+            top_n=3,
+            min_support=0.01,
+            min_confidence=0.2,
+            min_lift=1.0,
+        )
+    )
     recommendations = [
         f"Protect and scale {row['category']} where share is {row['revenue_share']:.1%} of tracked focus-category revenue."
         for _, row in category_df.iterrows()
@@ -39,10 +48,11 @@ def build_growth_strategy(payload: GrowthStrategyRequest) -> ToolResponse:
     recommendations.append(
         f"Primary whitespace: {weakest['category']} under-indexes in the tracked mix; use meal bundles and homepage placement."
     )
-    if combo_response.result.get("combos"):
-        top_combo = combo_response.result["combos"][0]
+    recommended_combos = combo_response.result.get("recommended_combos", [])
+    if recommended_combos:
+        top_combo = recommended_combos[0]
         recommendations.append(
-            f"Test attach offer built around {', '.join(top_combo['items'])} to lift beverage add-ons."
+            f"Test attach offer built around {top_combo['recommended_anchor']} + {top_combo['attach_item']} to lift beverage add-ons."
         )
 
     return ToolResponse(
