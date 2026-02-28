@@ -37,12 +37,33 @@ def test_openclaw_manifest() -> None:
     assert "conut_shift_staffing" in openclaw_names
 
 
+def test_tool_activity_feed_records_calls() -> None:
+    call_response = client.post(
+        "/tools/recommend_combos",
+        headers={"X-Conut-Caller": "openclaw", "X-Conut-Agent-Tool": "conut_combo_optimization"},
+        json={"top_n": 1},
+    )
+    assert call_response.status_code == 200
+
+    response = client.get("/tools/activity?limit=5")
+    assert response.status_code == 200
+    body = response.json()
+    assert "events" in body
+    assert len(body["events"]) >= 1
+    latest_event = body["events"][0]
+    assert latest_event["tool_name"] == "recommend_combos"
+    assert latest_event["source"] == "openclaw"
+    assert "raw_output" in latest_event
+
+
 def test_forecast_endpoint_smoke() -> None:
-    response = client.post("/tools/forecast_demand", json={"branch": "demo-branch", "horizon_days": 3})
+    response = client.post("/tools/forecast_demand", json={"branch": "Conut Jnah", "horizon_days": 3})
     assert response.status_code == 200
     body = response.json()
     assert body["tool_name"] == "forecast_demand"
     assert "result" in body
+    assert body["result"]["model"] == "3-period weighted moving average"
+    assert body["key_evidence_metrics"]["history_months_used"] >= 3
 
 
 def test_combo_endpoint_smoke() -> None:
@@ -66,3 +87,15 @@ def test_combo_endpoint_smoke() -> None:
     assert "top_rules" in body["result"]
     assert "recommended_combos" in body["result"]
     assert "query_context" in body["result"]
+
+
+def test_growth_endpoint_smoke() -> None:
+    response = client.post(
+        "/tools/growth_strategy",
+        json={"focus_categories": ["coffee", "milkshake"]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tool_name"] == "growth_strategy"
+    assert "category_metrics" in body["result"]
+    assert body["result"].get("placeholder") is not True

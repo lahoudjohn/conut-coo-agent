@@ -132,7 +132,7 @@ function buildApiUrlCandidates() {
   return candidates;
 }
 
-async function callBackend(path, payload) {
+async function callBackend(agentTool, path, payload) {
   const controller = new AbortController();
   const timeoutHandle = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   const attemptedUrls = [];
@@ -142,6 +142,8 @@ async function callBackend(path, payload) {
     const headers = {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "X-Conut-Caller": "openclaw",
+      "X-Conut-Agent-Tool": agentTool,
     };
 
     if (OPTIONAL_AUTH_TOKEN) {
@@ -217,7 +219,7 @@ export default function registerConutCooAgentTools(api) {
       description: tool.description,
       parameters: tool.parameters,
       async execute(_id, input) {
-        const payload = await callBackend(tool.path, input);
+        const payload = await callBackend(tool.name, tool.path, input);
         return formatToolOutput(tool.name, payload);
       },
     });

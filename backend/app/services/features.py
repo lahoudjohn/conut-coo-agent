@@ -8,6 +8,28 @@ import pandas as pd
 from app.core.config import settings
 from app.services.ingest import list_processed_files, load_best_available_frame, load_processed_frame
 
+PRIMARY_CSV_CANDIDATES = [
+    "REP_S_00502_obj1.csv",
+    "REP_S_00502_cleaned_updated.csv",
+    "REP_S_00502_cleaned.csv",
+]
+
+CATEGORY_ALIASES: dict[str, list[str]] = {
+    "coffee": [
+        "coffee",
+        "latte",
+        "espresso",
+        "macchiato",
+        "cappuccino",
+        "mocha",
+        "americano",
+        "flat white",
+        "cortado",
+        "frappe",
+    ],
+    "milkshake": ["milkshake"],
+}
+
 
 def _find_column(df: pd.DataFrame, aliases: list[str]) -> str | None:
     normalized = {c.lower(): c for c in df.columns}
@@ -35,34 +57,58 @@ class DataContext:
     processed_files: list[str]
 
 
+def _load_primary_csv_frame() -> tuple[pd.DataFrame, str | None]:
+    for filename in PRIMARY_CSV_CANDIDATES:
+        path = settings.processed_data_dir / filename
+        if not path.exists():
+            continue
+        try:
+            df = pd.read_csv(path, dtype=str)
+        except Exception:
+            continue
+        if not df.empty:
+            return df, filename
+    return pd.DataFrame(), None
+
+
 def get_primary_dataset() -> DataContext:
     processed = list_processed_files()
     processed_names = [p.name for p in processed]
-    if not processed:
+    if processed:
+        sales_df = load_best_available_frame()
+        if not sales_df.empty:
+            coverage = [
+                f"Loaded {len(sales_df):,} rows from processed cache.",
+                f"Processed files available: {', '.join(processed_names)}",
+            ]
+            return DataContext(
+                raw=sales_df.copy(),
+                coverage_notes=coverage,
+                placeholder_used=False,
+                processed_files=processed_names,
+            )
+
+    csv_df, csv_name = _load_primary_csv_frame()
+    if not csv_df.empty and csv_name:
+        csv_files = sorted(path.name for path in settings.processed_data_dir.glob("*.csv"))
+        coverage = [f"Loaded {len(csv_df):,} rows from processed CSV {csv_name}."]
+        if csv_files:
+            coverage.append(f"Processed CSV files available: {', '.join(csv_files)}")
         return DataContext(
-            raw=pd.DataFrame(),
-            coverage_notes=["No processed parquet files found in backend/data/processed."],
-            placeholder_used=True,
-            processed_files=[],
+            raw=csv_df.copy(),
+            coverage_notes=coverage,
+            placeholder_used=False,
+            processed_files=csv_files,
         )
 
-    sales_df = load_best_available_frame()
-    if sales_df.empty:
-        return DataContext(
-            raw=pd.DataFrame(),
-            coverage_notes=["Processed files exist but selected dataset is empty."],
-            placeholder_used=True,
-            processed_files=processed_names,
-        )
+    coverage_notes = ["No processed parquet or supported CSV files found in backend/data/processed."]
+    if processed_names:
+        coverage_notes.append("Processed parquet files exist but the selected dataset is empty.")
 
-    coverage = [
-        f"Loaded {len(sales_df):,} rows from processed cache.",
-        f"Processed files available: {', '.join(processed_names)}",
-    ]
     return DataContext(
-        raw=sales_df.copy(),
-        coverage_notes=coverage,
-        placeholder_used=False,
+        raw=pd.DataFrame(),
+        coverage_notes=coverage_notes,
+        placeholder_used=True,
         processed_files=processed_names,
     )
 
@@ -73,13 +119,19 @@ def build_transaction_frame() -> DataContext:
     if df.empty:
         return ctx
 
-    order_col = _find_column(df, ["order_no", "order_number", "invoice_no", "check_no", "receipt_no", "bill_no"])
-    item_col = _find_column(df, ["item_name", "menu_item", "product_name", "item", "description"])
+    sellable_col = _find_column(df, ["is_sellable_item"])
+    if sellable_col:
+        sellable_mask = df[sellable_col].astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
+        if sellable_mask.any():
+            df = df.loc[sellable_mask].copy()
+
+    order_col = _find_column(df, ["order_id", "order_no", "order_number", "invoice_no", "check_no", "receipt_no", "bill_no"])
+    item_col = _find_column(df, ["item_name", "item_name_normalized", "menu_item", "product_name", "item", "description"])
     branch_col = _find_column(df, ["branch", "branch_name", "store", "location"])
-    qty_col = _find_column(df, ["qty", "quantity", "sold_qty", "item_qty"])
-    amount_col = _find_column(df, ["net_sales", "sales", "amount", "total", "line_total"])
+    qty_col = _find_column(df, ["line_qty", "qty", "quantity", "sold_qty", "item_qty"])
+    amount_col = _find_column(df, ["line_amount", "net_sales", "sales", "amount", "total", "line_total"])
     customer_col = _find_column(df, ["customer", "customer_name", "customer_code"])
-    date_col = _find_column(df, ["business_date", "date", "order_date", "created_at", "datetime"])
+    date_col = _find_column(df, ["business_date", "date", "order_date", "created_at", "datetime", "from_date", "report_generated_date"])
     time_col = _find_column(df, ["time", "order_time", "created_time"])
 
     if amount_col and amount_col in df:
@@ -166,6 +218,10 @@ def build_branch_hourly_profile() -> DataContext:
 def load_monthly_branch_summary() -> pd.DataFrame:
     df = load_processed_frame("rep_s_00334_1_smry")
     if df.empty:
+        csv_path = settings.processed_data_dir / "REP_S_00334_1_SMRY_cleaned.csv"
+        if csv_path.exists():
+            df = pd.read_csv(csv_path, dtype=str)
+    if df.empty:
         return pd.DataFrame()
 
     branch_col = _find_column(df, ["branch", "branch_name", "store", "location"])
@@ -190,7 +246,9 @@ def category_keyword_share(categories: list[str]) -> tuple[pd.DataFrame, DataCon
     lowered = df["item_name"].astype(str).str.lower()
     rows = []
     for category in categories:
-        mask = lowered.str.contains(category.lower(), na=False)
+        keywords = CATEGORY_ALIASES.get(category.lower(), [category.lower()])
+        pattern = "|".join(pd.Series(keywords).map(lambda value: rf"\b{value}\b"))
+        mask = lowered.str.contains(pattern, na=False, regex=True)
         rows.append(
             {
                 "category": category,

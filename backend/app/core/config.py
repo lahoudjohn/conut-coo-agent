@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     raw_data_dir: Path = BASE_DIR / "data" / "raw"
     processed_data_dir: Path = BASE_DIR / "data" / "processed"
     default_orders_per_employee_per_shift: int = 18
+    openclaw_gateway_url: str = "http://127.0.0.1:18789"
+    openclaw_agent_id: str = "main"
+    openclaw_gateway_token: str | None = None
+    openclaw_config_path: Path = Path.home() / ".openclaw" / "openclaw.json"
 
     model_config = SettingsConfigDict(
         env_prefix="CONUT_",
