@@ -78,6 +78,16 @@ def chat_with_openclaw(payload: AgentChatRequest) -> AgentChatResponse:
         "user": session_id,
         "messages": [
             {
+                "role": "system",
+                "content": (
+                    "You are the Conut COO Agent. For Conut operational questions, prefer using the "
+                    "available Conut tools instead of answering from general knowledge. Use tools for "
+                    "combo optimization, demand forecasting, expansion feasibility, shift staffing, "
+                    "and coffee or milkshake growth strategy whenever relevant. Base answers on tool "
+                    "outputs and cite evidence from the tool results."
+                ),
+            },
+            {
                 "role": "user",
                 "content": payload.message,
             }

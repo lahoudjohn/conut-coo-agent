@@ -11,7 +11,8 @@ export function Card({
   return (
     <section
       className={clsx(
-        "rounded-xl border border-stone-300 bg-white p-5 shadow-sm",
+        "rounded-[28px] p-5 shadow-sm",
+        !className && "border border-stone-300 bg-white",
         className
       )}
     >

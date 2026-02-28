@@ -10,7 +10,6 @@ type ChatMessage = {
 };
 
 const SESSION_STORAGE_KEY = "conut-openclaw-session-id";
-const CHAT_MESSAGES_STORAGE_KEY = "conut-openclaw-chat-messages";
 const TOOL_ACTIVITY_STORAGE_KEY = "conut-openclaw-tool-activity";
 
 const PROMPTS = [
@@ -76,46 +75,6 @@ function buildInitialSessionId() {
   const generated = window.crypto?.randomUUID?.() || `session-${Date.now()}`;
   window.localStorage.setItem(SESSION_STORAGE_KEY, generated);
   return generated;
-}
-
-function buildInitialMessages() {
-  if (typeof window === "undefined") {
-    return buildDefaultMessages();
-  }
-
-  const raw = window.localStorage.getItem(CHAT_MESSAGES_STORAGE_KEY);
-  if (!raw) {
-    return buildDefaultMessages();
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (
-      Array.isArray(parsed) &&
-      parsed.every(
-        (item) =>
-          item &&
-          (item.role === "user" || item.role === "assistant") &&
-          typeof item.content === "string"
-      )
-    ) {
-      return (parsed as Array<Partial<ChatMessage>>).map((item, index) => {
-        const role: ChatMessage["role"] = item.role === "user" ? "user" : "assistant";
-        return {
-          role,
-          content: item.content || "",
-          timestamp:
-            typeof item.timestamp === "string"
-              ? item.timestamp
-              : new Date(Date.now() + index).toISOString(),
-        };
-      });
-    }
-  } catch {
-    // Ignore malformed cache.
-  }
-
-  return buildDefaultMessages();
 }
 
 function buildInitialEvents() {
@@ -319,7 +278,7 @@ function BrandHero() {
             Authentic Hungarian pastry intelligence
           </div>
           <h2 className="mt-4 max-w-3xl font-['Georgia'] text-4xl font-semibold leading-tight text-[#fff8eb] md:text-5xl">
-            A command center for pastry, coffee, and late-night branch decisions.
+            Built for Conut&apos;s pastry, coffee, and milkshake decisions across every branch.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[rgba(244,236,221,0.78)] md:text-base">
             COOnut turns Conut&apos;s operational data into immediate, explainable actions across
@@ -669,15 +628,11 @@ function DashboardView({
 export default function App() {
   const [view, setView] = useState<ViewMode>("chat");
   const [sessionId, setSessionId] = useState<string>(() => buildInitialSessionId());
-  const [messages, setMessages] = useState<ChatMessage[]>(() => buildInitialMessages());
+  const [messages, setMessages] = useState<ChatMessage[]>(() => buildDefaultMessages());
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [events, setEvents] = useState<ToolActivityEvent[]>(() => buildInitialEvents());
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    window.localStorage.setItem(CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
 
   useEffect(() => {
     window.localStorage.setItem(TOOL_ACTIVITY_STORAGE_KEY, JSON.stringify(events));
@@ -750,7 +705,7 @@ export default function App() {
         if (!mounted) {
           return;
         }
-        setEvents(response.events);
+        setEvents((current) => (response.events.length > 0 ? response.events : current));
         setError(null);
       } catch (fetchError) {
         if (!mounted) {
