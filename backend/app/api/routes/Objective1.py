@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.tools import ComboRequest, ToolResponse
-from app.tools.combos import recommend_combos
+from app.objectives.objectives_combos import recommend_combos
 
 router = APIRouter(prefix="/combos", tags=["Combo Recommendations"])
 
