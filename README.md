@@ -462,9 +462,3 @@ That is why the Docker setup includes:
 - Custom branded frontend (`COOnut`)
 - README run instructions
 - docs placeholders and demo checklist
-
-## Recommended Final Submission Message
-
-If you need a concise description for evaluators:
-
-`COOnut is a Dockerized FastAPI + React decision-support system for Conut's five COO objectives, integrated with OpenClaw as a host-side agent layer that calls the backend tools in practice.`
