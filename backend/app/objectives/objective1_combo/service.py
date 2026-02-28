@@ -9,18 +9,17 @@ from app.schemas.tools import ComboRequest, ToolResponse
 
 
 COMBO_SOURCE_CANDIDATES = [
-    settings.processed_data_dir / "REP_S_00502_cleaned_updated.csv",
-    settings.processed_data_dir / "REP_S_00502_cleaned.csv",
+    settings.processed_data_dir / "REP_S_00502_obj1.csv",
 ]
 REQUIRED_COLUMNS = {
     "branch",
     "customer_name",
     "line_qty",
-    "item_description",
     "line_amount",
     "customer_total_qty",
     "customer_total_amount",
 }
+ITEM_NAME_COLUMNS = ("item_name_normalized", "item_description")
 OPTIONAL_ORDER_COLUMNS = {"order_id", "order_sequence"}
 
 TRIVIAL_EXACT_ITEMS = {
@@ -79,7 +78,7 @@ def _load_combo_source() -> tuple[pd.DataFrame, str]:
     for path in COMBO_SOURCE_CANDIDATES:
         if path.exists():
             return pd.read_csv(path), path.name
-    return pd.DataFrame(), "REP_S_00502_cleaned_updated.csv"
+    return pd.DataFrame(), "REP_S_00502_obj1.csv"
 
 
 def _normalize_item_name(value: object) -> str:
@@ -140,7 +139,7 @@ def _ensure_order_id(df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
     if "order_id" in df.columns and df["order_id"].astype(str).str.strip().ne("").any():
         out = df.copy()
         out["order_id"] = out["order_id"].astype(str).str.strip()
-        return out, "Used native order_id from REP_S_00502_cleaned.csv."
+        return out, "Used native order_id from REP_S_00502_obj1.csv."
     return _derive_order_ids(df), "Derived synthetic order_id from contiguous customer/order-total blocks."
 
 
@@ -161,18 +160,22 @@ def _prepare_transaction_frame(
     }
 
     if df.empty:
-        return df, ["REP_S_00502_cleaned.csv is missing from backend/data/processed."], stats
+        return df, ["REP_S_00502_obj1.csv is missing from backend/data/processed."], stats
 
     missing = REQUIRED_COLUMNS.difference(df.columns)
     if missing:
-        return pd.DataFrame(), [f"REP_S_00502_cleaned.csv is missing required columns: {', '.join(sorted(missing))}."], stats
+        return pd.DataFrame(), [f"REP_S_00502_obj1.csv is missing required columns: {', '.join(sorted(missing))}."], stats
+
+    item_name_col = next((col for col in ITEM_NAME_COLUMNS if col in df.columns), None)
+    if not item_name_col:
+        return pd.DataFrame(), ["REP_S_00502_obj1.csv is missing an item name column."], stats
 
     out = df.copy()
     numeric_cols = ["line_qty", "line_amount", "customer_total_qty", "customer_total_amount"]
     for col in numeric_cols:
         out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0.0)
 
-    out["item_name"] = out["item_description"].map(_normalize_item_name)
+    out["item_name"] = out[item_name_col].map(_normalize_item_name)
     out, order_note = _ensure_order_id(out)
     notes.append(order_note)
 
@@ -581,7 +584,7 @@ def recommend_combos(payload: ComboRequest) -> ToolResponse:
             "branch_filtered": payload.branch or "all",
         },
         assumptions=[
-            "This tool prefers REP_S_00502_cleaned_updated.csv and falls back to REP_S_00502_cleaned.csv if needed.",
+            "This tool uses REP_S_00502_obj1.csv, the Objective 1 netted transaction file built from the cleaned 00502 report.",
             "It uses a native order_id if present; otherwise it falls back to synthetic basket segmentation.",
             "Rules are mined with Apriori-style frequent-item pruning on single products, then 2-item association scoring with support, confidence, and lift.",
             "Strategic ranking penalizes same-family pairings so the returned recommendations are more cross-sell oriented than raw co-occurrence pairs.",
