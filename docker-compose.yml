@@ -3,6 +3,8 @@ services:
     build: ./backend
     container_name: conut-backend
     working_dir: /app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./backend/app:/app/app
       - ./backend/data:/app/data
@@ -11,6 +13,10 @@ services:
       - "8000:8000"
     environment:
       CONUT_ENVIRONMENT: dev
+      CONUT_OPENCLAW_GATEWAY_URL: ${CONUT_OPENCLAW_GATEWAY_URL:-http://host.docker.internal:18789}
+      CONUT_OPENCLAW_AGENT_ID: ${CONUT_OPENCLAW_AGENT_ID:-main}
+      CONUT_OPENCLAW_GATEWAY_TOKEN: ${CONUT_OPENCLAW_GATEWAY_TOKEN:-}
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -26,3 +32,4 @@ services:
       OPENAPI_URL: http://backend:8000/openapi.json
     depends_on:
       - backend
+    restart: unless-stopped
