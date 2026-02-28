@@ -17,7 +17,11 @@ def test_tool_schema() -> None:
     assert response.status_code == 200
     body = response.json()
     assert "tools" in body
-    assert len(body["tools"]) == 5
+    tool_names = {tool["name"] for tool in body["tools"]}
+    assert len(body["tools"]) >= 7
+    assert "estimate_staffing" in tool_names
+    assert "understaffed_branches" in tool_names
+    assert "average_shift_length" in tool_names
 
 
 def test_forecast_endpoint_smoke() -> None:
