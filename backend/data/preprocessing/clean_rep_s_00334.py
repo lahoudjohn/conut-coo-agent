@@ -8,19 +8,19 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 INPUT_PATH = BASE_DIR / "raw" / "rep_s_00334_1_SMRY.csv"
 OUTPUT_PATH = BASE_DIR / "processed" / "REP_S_00334_1_SMRY_cleaned.csv"
 
-MONTH_NAMES = {
-    "january",
-    "february",
-    "march",
-    "april",
-    "may",
-    "june",
-    "july",
-    "august",
-    "september",
-    "october",
-    "november",
-    "december",
+MONTH_TO_NUMBER = {
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
 }
 
 
@@ -43,7 +43,7 @@ def is_month_row(row: list[str]) -> bool:
     month_value = normalize_cell(row[0]).lower()
     year_value = normalize_cell(row[2])
     total_value = normalize_cell(row[3])
-    if month_value not in MONTH_NAMES:
+    if month_value not in MONTH_TO_NUMBER:
         return False
     if not year_value.isdigit():
         return False
@@ -88,15 +88,16 @@ def clean_monthly_sales_report(input_path: Path = INPUT_PATH, output_path: Path 
             continue
 
         month_name = row[0]
+        month_number = MONTH_TO_NUMBER[month_name.lower()]
         year_value = int(row[2])
         total_sales = parse_numeric(row[3])
 
         cleaned_rows.append(
             {
                 "branch_name": current_branch,
-                "month": month_name,
+                "month": month_number,
                 "year": year_value,
-                "period_key": f"{year_value}-{month_name[:3].title()}",
+                "period_key": f"{year_value}-{month_number:02d}",
                 "total_sales": total_sales,
                 "source_file": input_path.name,
             }
